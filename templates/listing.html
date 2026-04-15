@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ listing.title[:60] }} — NYC Apt Scanner</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink: #0d0d0d; --ink-2: #3a3a3a; --ink-3: #7a7a7a;
+      --paper: #f5f3ef; --paper-2: #edeae3;
+      --accent: #c0392b; --blue: #1a3a5c; --border: #d8d4cc;
+      --white: #fdfcfa;
+      --font-serif: Georgia, 'Times New Roman', Times, serif;
+      --font-mono: 'Courier New', Courier, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    }
+    body { background: var(--paper); color: var(--ink); font-family: var(--font-sans); }
+
+    .topbar {
+      background: var(--ink);
+      border-bottom: 3px solid var(--accent);
+      padding: 0.9rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .back-link {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #9a9a9a;
+      text-decoration: none;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .back-link:hover { color: #fff; }
+    .topbar-brand {
+      font-family: var(--font-serif);
+      font-size: 1.1rem;
+      color: var(--white);
+    }
+    .topbar-brand span { color: var(--accent); }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 2rem 5rem;
+    }
+
+    /* Photo gallery */
+    .gallery {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .gallery img {
+      width: 100%;
+      height: 260px;
+      object-fit: cover;
+      display: block;
+    }
+    .gallery img:first-child:nth-last-child(1) {
+      grid-column: 1 / -1;
+      height: 360px;
+    }
+    .gallery img:first-child:nth-last-child(n+3) { height: 220px; }
+
+    /* Header */
+    .listing-header { margin-bottom: 1.5rem; }
+    .listing-sub {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--white);
+      background: var(--blue);
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 2px;
+      margin-bottom: 0.6rem;
+    }
+    .listing-title {
+      font-family: var(--font-serif);
+      font-size: 1.8rem;
+      line-height: 1.25;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.4rem;
+    }
+    .listing-meta {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--ink-3);
+    }
+    .listing-meta a { color: var(--blue); }
+
+    /* Key stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .stat-cell {
+      background: var(--white);
+      padding: 1rem 1.2rem;
+    }
+    .stat-val {
+      font-family: var(--font-serif);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1;
+      margin-bottom: 0.2rem;
+    }
+    .stat-val.price-val { color: var(--accent); }
+    .stat-key {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .stat-val-unknown {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--ink-3);
+      font-style: italic;
+      padding-top: 0.3rem;
+    }
+
+    /* Info sections */
+    .section { margin-bottom: 1.5rem; }
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.8rem;
+    }
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .pill {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      background: var(--paper-2);
+      border: 1px solid var(--border);
+      color: var(--ink-2);
+      border-radius: 3px;
+      padding: 0.25rem 0.6rem;
+    }
+
+    .post-body {
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--ink-2);
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.2rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .notes-box {
+      background: #fff8e1;
+      border: 1px solid #f0d080;
+      border-radius: 4px;
+      padding: 0.8rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: #7a6200;
+      line-height: 1.5;
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .cta:hover { background: #e74c3c; transform: translateY(-1px); }
+
+    @media (max-width: 600px) {
+      .page { padding: 1rem 1rem 3rem; }
+      .topbar { padding: 0.7rem 1rem; }
+      .gallery { grid-template-columns: 1fr; }
+      .listing-title { font-size: 1.3rem; }
+      .stat-val { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back-link" href="/">← Back</a>
+  <div class="topbar-brand">NYC<span>Apt</span> Scanner</div>
+</div>
+
+<div class="page">
+
+  {% if listing.photos %}
+  <div class="gallery">
+    {% for photo in listing.photos[:4] %}
+      <img src="{{ photo }}" alt="Listing photo {{ loop.index }}" loading="lazy"
+           onerror="this.style.display='none'" />
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="listing-header">
+    <div class="listing-sub">r/{{ listing.subreddit }}</div>
+    <h1 class="listing-title">{{ listing.title }}</h1>
+    <div class="listing-meta">
+      Posted by u/{{ listing.author }}
+      {% if listing.created_utc %} · {{ listing.created_utc[:10] }}{% endif %}
+      · <a href="{{ listing.url }}" target="_blank" rel="noopener">View on Reddit ↗</a>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-cell">
+      {% if listing.price %}
+        <div class="stat-val price-val">${{ "{:,}".format(listing.price) }}</div>
+        <div class="stat-key">Monthly Rent</div>
+      {% else %}
+        <div class="stat-val-unknown">Not listed</div>
+        <div class="stat-key">Monthly Rent</div>
+      {% endif %}
+    </div>
+
+    <div class="stat-cell">
+      {% if listing.bedrooms is not none %}
+        <div class="stat-val">{{ "Studio" if listing.bedrooms == 0 else listing.bedrooms | int if listing.bedrooms == listing.bedrooms | int else listing.bedrooms }}</div>
+        <div class="stat-key">Bedrooms</div>
+      {% else %}
+        <div class="stat-val-unknown">Unknown</div>
+        <div class="stat-key">Bedrooms</div>
+      {% endif %}
+    </div>
+
+    <div class="stat-cell">
+      {% if listing.bathrooms is not none %}
+        <div class="stat-val">{{ listing.bathrooms | int if listing.bathrooms == listing.bathrooms | int else listing.bathrooms }}</div>
+        <div class="stat-key">Bathrooms</div>
+      {% else %}
+        <div class="stat-val-unknown">Unknown</div>
+        <div class="stat-key">Bathrooms</div>
+      {% endif %}
+    </div>
+
+    <div class="stat-cell">
+      {% if listing.neighborhood or listing.borough %}
+        <div class="stat-val" style="font-size:1rem;padding-top:0.2rem">
+          {{ listing.neighborhood or listing.borough }}
+        </div>
+        <div class="stat-key">{{ "Neighborhood" if listing.neighborhood else "Borough" }}</div>
+      {% else %}
+        <div class="stat-val-unknown">Unknown</div>
+        <div class="stat-key">Location</div>
+      {% endif %}
+    </div>
+
+    {% if listing.lease_start or listing.lease_duration_months %}
+    <div class="stat-cell">
+      <div class="stat-val" style="font-size:1rem;padding-top:0.2rem">
+        {{ listing.lease_start or "—" }}
+      </div>
+      <div class="stat-key">Available</div>
+    </div>
+
+    <div class="stat-cell">
+      {% if listing.lease_duration_months %}
+        <div class="stat-val">{{ listing.lease_duration_months }}<span style="font-size:0.9rem">mo</span></div>
+      {% else %}
+        <div class="stat-val-unknown">Unknown</div>
+      {% endif %}
+      <div class="stat-key">Lease Term</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Amenities -->
+  {% if listing.amenities %}
+  <div class="section">
+    <div class="section-title">Amenities</div>
+    <div class="pills">
+      {% for a in listing.amenities %}
+        <span class="pill">{{ a }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Lease details -->
+  {% if listing.lease_end %}
+  <div class="section">
+    <div class="section-title">Lease Details</div>
+    <div class="pills">
+      {% if listing.lease_start %}<span class="pill">Start: {{ listing.lease_start }}</span>{% endif %}
+      {% if listing.lease_end %}<span class="pill">End: {{ listing.lease_end }}</span>{% endif %}
+      {% if listing.lease_duration_months %}<span class="pill">{{ listing.lease_duration_months }} months</span>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Extraction notes -->
+  {% if listing.extraction_notes %}
+  <div class="section">
+    <div class="section-title">Notes</div>
+    <div class="notes-box">{{ listing.extraction_notes }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Post body -->
+  {% if listing.post_body %}
+  <div class="section">
+    <div class="section-title">Original Post</div>
+    <div class="post-body">{{ listing.post_body }}</div>
+  </div>
+  {% endif %}
+
+  <a class="cta" href="{{ listing.url }}" target="_blank" rel="noopener">
+    View Full Post on Reddit ↗
+  </a>
+
+</div>
+</body>
+</html>

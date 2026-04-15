@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NYC Apt Scanner</title>
+  <style>
+    /* ── Reset & Tokens ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:      #0d0d0d;
+      --ink-2:    #3a3a3a;
+      --ink-3:    #7a7a7a;
+      --paper:    #f5f3ef;
+      --paper-2:  #edeae3;
+      --accent:   #c0392b;       /* subway-red */
+      --accent-2: #e74c3c;
+      --blue:     #1a3a5c;
+      --gold:     #c8a84b;
+      --white:    #fdfcfa;
+      --border:   #d8d4cc;
+      --card-bg:  #fdfcfa;
+      --shadow:   0 2px 8px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-hover: 0 8px 28px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.08);
+      --radius:   4px;
+      --font-serif:  Georgia, 'Times New Roman', Times, serif;
+      --font-mono:   'Courier New', Courier, monospace;
+      --font-sans:   -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Masthead ───────────────────────────────────────────────── */
+    .masthead {
+      background: var(--ink);
+      border-bottom: 3px solid var(--accent);
+      padding: 0 2rem;
+    }
+    .masthead-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.1rem 0;
+      gap: 1rem;
+    }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .brand-title {
+      font-family: var(--font-serif);
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--white);
+    }
+    .brand-title span {
+      color: var(--accent);
+    }
+    .brand-meta {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--ink-3);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .brand-meta strong { color: #9a9a9a; }
+
+    .scan-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .duration-select {
+      border: 1px solid #3a3a3a;
+      background: #1a1a1a;
+      color: #ccc;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      border-radius: var(--radius);
+      padding: 0.45rem 0.6rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .duration-select:focus { border-color: #666; }
+    .scan-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.55rem 1.2rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      flex-shrink: 0;
+    }
+    .scan-btn:hover { background: var(--accent-2); transform: translateY(-1px); }
+    .scan-btn:active { transform: translateY(0); }
+    .scan-btn.loading { opacity: 0.7; cursor: not-allowed; }
+    .spinner {
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .scan-btn.loading .spinner { display: block; }
+    .scan-btn.loading .btn-label { opacity: 0.6; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Filter Bar ─────────────────────────────────────────────── */
+    .filter-bar {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .filter-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 0;
+    }
+    .filter-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      white-space: nowrap;
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .filter-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    select, input[type="number"] {
+      border: 1px solid var(--border);
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      border-radius: var(--radius);
+      padding: 0.3rem 0.5rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    select:focus, input[type="number"]:focus { border-color: var(--blue); }
+    input[type="number"] { width: 80px; }
+    .filter-apply {
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.32rem 0.9rem;
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .filter-apply:hover { background: #254d7a; }
+    .filter-reset {
+      color: var(--ink-3);
+      font-size: 0.75rem;
+      text-decoration: none;
+      font-family: var(--font-mono);
+      padding: 0.3rem 0.4rem;
+    }
+    .filter-reset:hover { color: var(--accent); }
+    .result-count {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--ink-3);
+      white-space: nowrap;
+    }
+    .result-count strong { color: var(--ink); }
+
+    /* ── Main Layout ────────────────────────────────────────────── */
+    .main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem 4rem;
+    }
+
+    /* ── Listing Grid ───────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* ── Card ───────────────────────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: box-shadow 0.18s, transform 0.18s, border-color 0.18s;
+      display: flex;
+      flex-direction: column;
+      animation: fadeUp 0.3s ease both;
+    }
+    .card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-3px);
+      border-color: #b8b4ac;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-photo {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      display: block;
+      background: var(--paper-2);
+    }
+    .card-photo-placeholder {
+      height: 6px;
+      background: linear-gradient(90deg, var(--blue) 0%, var(--accent) 100%);
+    }
+
+    .card-body {
+      padding: 1rem 1.1rem 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .card-title {
+      font-family: var(--font-serif);
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--ink);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.45rem;
+      border-radius: 2px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-sub {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .card-location {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--ink-3);
+      letter-spacing: 0.03em;
+    }
+    .card-location strong { color: var(--ink-2); }
+
+    .card-price {
+      font-family: var(--font-serif);
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .card-price .price-unit {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--ink-3);
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      margin-left: 2px;
+    }
+    .card-price-unknown {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--ink-3);
+      font-style: italic;
+    }
+
+    .card-specs {
+      display: flex;
+      gap: 1rem;
+    }
+    .spec {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .spec-val {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .spec-key {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--ink-3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .card-amenities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+    .pill {
+      font-size: 0.65rem;
+      font-family: var(--font-mono);
+      background: var(--paper-2);
+      border: 1px solid var(--border);
+      color: var(--ink-2);
+      border-radius: 2px;
+      padding: 0.15rem 0.4rem;
+      letter-spacing: 0.03em;
+    }
+    .pill-more {
+      background: none;
+      border-color: transparent;
+      color: var(--ink-3);
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--ink-3);
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--border);
+      margin-top: 0.2rem;
+    }
+    .card-meta strong { color: var(--ink-2); }
+    .card-reddit-link {
+      color: var(--blue);
+      text-decoration: none;
+      font-size: 0.68rem;
+      opacity: 0.8;
+      transition: opacity 0.12s;
+    }
+    .card-reddit-link:hover { opacity: 1; text-decoration: underline; }
+
+    /* ── Card photo wrap ────────────────────────────────────────── */
+    .card-photo-wrap {
+      position: relative;
+      cursor: zoom-in;
+    }
+    .photo-count {
+      position: absolute;
+      bottom: 0.5rem;
+      right: 0.5rem;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 3px;
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+
+    /* ── Lightbox ────────────────────────────────────────────────── */
+    .lb-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 1000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .lb-overlay.open { display: flex; }
+
+    .lb-header {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.2rem;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+    }
+    .lb-title {
+      font-family: var(--font-serif);
+      font-size: 0.9rem;
+      color: #ddd;
+      max-width: 70%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lb-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.6rem;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0.7;
+      transition: opacity 0.15s;
+      padding: 0 0.2rem;
+    }
+    .lb-close:hover { opacity: 1; }
+
+    .lb-img-wrap {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 5rem;
+    }
+    .lb-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 4px;
+      user-select: none;
+    }
+
+    .lb-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      font-size: 1.4rem;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+      backdrop-filter: blur(4px);
+    }
+    .lb-arrow:hover { background: rgba(255,255,255,0.25); }
+    .lb-arrow.prev { left: 1rem; }
+    .lb-arrow.next { right: 1rem; }
+    .lb-arrow:disabled { opacity: 0.2; cursor: default; }
+
+    .lb-counter {
+      position: absolute;
+      bottom: 1.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.1em;
+    }
+
+    .lb-dots {
+      position: absolute;
+      bottom: 2.4rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0.4rem;
+    }
+    .lb-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .lb-dot.active { background: #fff; }
+
+    /* ── Empty State ────────────────────────────────────────────── */
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 5rem 2rem;
+    }
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.3;
+    }
+    .empty h2 {
+      font-family: var(--font-serif);
+      font-size: 1.4rem;
+      color: var(--ink-2);
+      margin-bottom: 0.4rem;
+    }
+    .empty p {
+      color: var(--ink-3);
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
+    }
+
+    /* ── Toast ──────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--ink);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      padding: 0.7rem 1.2rem;
+      border-radius: 4px;
+      border-left: 3px solid var(--accent);
+      box-shadow: 0 4px 16px rgba(0,0,0,.3);
+      transform: translateY(20px);
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 999;
+      max-width: 300px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .masthead, .filter-bar { padding: 0 1rem; }
+      .main { padding: 1rem 1rem 3rem; }
+      .filter-inner { gap: 0.5rem; }
+      .filter-sep { display: none; }
+      .result-count { display: none; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Masthead ────────────────────────────────────────────────── -->
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="brand">
+      <div class="brand-title">NYC<span>Apt</span> Scanner</div>
+      <div class="brand-meta">
+        <strong>{{ total }}</strong> listings stored
+        {% if last_scan %}
+          &nbsp;·&nbsp; last scan <strong>{{ last_scan.scanned_at.strftime('%b %d, %H:%M') }}</strong>
+        {% else %}
+          &nbsp;·&nbsp; never scanned
+        {% endif %}
+        &nbsp;·&nbsp; manual scans only
+      </div>
+    </div>
+    <div class="scan-controls">
+      <select class="duration-select" id="durationSelect">
+        <option value="24">Past 24h</option>
+        <option value="48">Past 2 days</option>
+        <option value="168">Past week</option>
+        <option value="720">Past month</option>
+        <option value="">All time</option>
+      </select>
+      <button class="scan-btn" id="scanBtn" onclick="triggerScan()">
+        <div class="spinner" id="spinner"></div>
+        <span class="btn-label" id="btnLabel">&#9654; Scan Now</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Filter Bar ──────────────────────────────────────────────── -->
+<nav class="filter-bar">
+  <form class="filter-inner" method="GET" action="/">
+    <span class="filter-label">Filter</span>
+
+    <div class="filter-group">
+      <select name="borough">
+        <option value="">All Boroughs</option>
+        {% for b in boroughs %}
+          <option value="{{ b }}" {% if filters.borough == b %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <div class="filter-group">
+      <span class="filter-label">$</span>
+      <input type="number" name="min_price" placeholder="Min" value="{{ filters.min_price or '' }}" min="0" step="100" />
+      <span class="filter-label">–</span>
+      <input type="number" name="max_price" placeholder="Max" value="{{ filters.max_price or '' }}" min="0" step="100" />
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <div class="filter-group">
+      <span class="filter-label">Beds</span>
+      <input type="number" name="min_beds" placeholder="Min" value="{{ filters.min_beds or '' }}" min="0" step="0.5" style="width:60px" />
+      <span class="filter-label">–</span>
+      <input type="number" name="max_beds" placeholder="Max" value="{{ filters.max_beds or '' }}" min="0" step="0.5" style="width:60px" />
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <div class="filter-group">
+      <select name="subreddit">
+        <option value="">All Subreddits</option>
+        {% for s in subreddits %}
+          <option value="{{ s }}" {% if filters.subreddit == s %}selected{% endif %}>r/{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <div class="filter-group">
+      <select name="sort">
+        <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest</option>
+        <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>Price ↑</option>
+        <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>Price ↓</option>
+      </select>
+    </div>
+
+    <button type="submit" class="filter-apply">Apply</button>
+    <a href="/" class="filter-reset">Reset</a>
+
+    <span class="result-count"><strong>{{ listings | length }}</strong> shown</span>
+  </form>
+</nav>
+
+<!-- ── Grid ───────────────────────────────────────────────────── -->
+<main class="main">
+  <div class="grid">
+
+    {% if listings %}
+      {% for listing in listings %}
+      {% set photos = listing.photos | fromjson if listing.photos else [] %}
+      {% set amenities = listing.amenities | fromjson if listing.amenities else [] %}
+
+      <div class="card" onclick="window.location.href='/listing/{{ listing.id }}'" style="animation-delay: {{ loop.index0 * 0.04 }}s">
+
+        {% if photos and photos | length > 0 %}
+          <div class="card-photo-wrap" onclick="openLightbox(event, this)"
+               data-photos="{{ photos | tojson | e }}"
+               data-title="{{ listing.title | e }}">
+            <img class="card-photo" src="{{ photos[0] }}" alt="Listing photo" loading="lazy"
+                 onerror="this.closest('.card-photo-wrap').style.display='none'">
+            {% if photos | length > 1 %}
+              <span class="photo-count">&#128247; {{ photos | length }}</span>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="card-photo-placeholder"></div>
+        {% endif %}
+
+        <div class="card-body">
+          <div class="card-top">
+            <div class="card-title">{{ listing.title }}</div>
+            <span class="badge badge-sub">r/{{ listing.subreddit }}</span>
+          </div>
+
+          {% if listing.neighborhood or listing.borough %}
+          <div class="card-location">
+            {% if listing.neighborhood %}<strong>{{ listing.neighborhood }}</strong>{% endif %}
+            {% if listing.neighborhood and listing.borough %} · {% endif %}
+            {% if listing.borough %}{{ listing.borough }}{% endif %}
+          </div>
+          {% endif %}
+
+          {% if listing.price %}
+            <div class="card-price">
+              ${{ "{:,}".format(listing.price) }}<span class="price-unit">/mo</span>
+            </div>
+          {% else %}
+            <div class="card-price-unknown">Price not listed</div>
+          {% endif %}
+
+          <div class="card-specs">
+            {% if listing.bedrooms is not none %}
+            <div class="spec">
+              <span class="spec-val">{{ "Studio" if listing.bedrooms == 0 else (listing.bedrooms | int if listing.bedrooms == listing.bedrooms | int else listing.bedrooms) }}</span>
+              <span class="spec-key">{{ "Type" if listing.bedrooms == 0 else "Beds" }}</span>
+            </div>
+            {% endif %}
+            {% if listing.bathrooms is not none %}
+            <div class="spec">
+              <span class="spec-val">{{ listing.bathrooms | int if listing.bathrooms == listing.bathrooms | int else listing.bathrooms }}</span>
+              <span class="spec-key">Baths</span>
+            </div>
+            {% endif %}
+            {% if listing.lease_duration_months %}
+            <div class="spec">
+              <span class="spec-val">{{ listing.lease_duration_months }}mo</span>
+              <span class="spec-key">Lease</span>
+            </div>
+            {% endif %}
+          </div>
+
+          {% if amenities %}
+          <div class="card-amenities">
+            {% for a in amenities[:4] %}
+              <span class="pill">{{ a }}</span>
+            {% endfor %}
+            {% if amenities | length > 4 %}
+              <span class="pill pill-more">+{{ amenities | length - 4 }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <div class="card-meta">
+            {% if listing.lease_start %}
+              <span>Available <strong>{{ listing.lease_start }}</strong></span>
+            {% else %}
+              <span></span>
+            {% endif %}
+            <a class="card-reddit-link" href="{{ listing.url }}" target="_blank" rel="noopener"
+               onclick="event.stopPropagation()">View on Reddit ↗</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+    {% else %}
+      <div class="empty">
+        <div class="empty-icon">🏙</div>
+        <h2>No listings found</h2>
+        <p>
+          {% if filters.borough or filters.min_price or filters.max_price or filters.subreddit %}
+            Try adjusting your filters, or&nbsp;<a href="/" style="color:var(--blue)">reset them</a>.
+          {% else %}
+            Click <strong>Scan Now</strong> to pull the latest posts from Reddit.
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+
+  </div>
+</main>
+
+<!-- ── Lightbox ────────────────────────────────────────────────── -->
+<div class="lb-overlay" id="lightbox" onclick="lbClickOutside(event)">
+  <div class="lb-header">
+    <div class="lb-title" id="lbTitle"></div>
+    <button class="lb-close" onclick="closeLightbox()">&#215;</button>
+  </div>
+
+  <div class="lb-img-wrap">
+    <img class="lb-img" id="lbImg" src="" alt="Photo" />
+  </div>
+
+  <button class="lb-arrow prev" id="lbPrev" onclick="lbStep(-1)">&#8249;</button>
+  <button class="lb-arrow next" id="lbNext" onclick="lbStep(1)">&#8250;</button>
+
+  <div class="lb-dots" id="lbDots"></div>
+  <div class="lb-counter" id="lbCounter"></div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<script>
+  async function triggerScan() {
+    const btn = document.getElementById('scanBtn');
+    const spinner = document.getElementById('spinner');
+    const label = document.getElementById('btnLabel');
+    const durationVal = document.getElementById('durationSelect').value;
+    const maxAgeHours = durationVal ? parseInt(durationVal) : null;
+
+    if (btn.classList.contains('loading')) return;
+
+    btn.classList.add('loading');
+    spinner.style.display = 'block';
+    label.textContent = 'Scanning…';
+
+    try {
+      const res = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ max_age_hours: maxAgeHours }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        showToast(`Scan complete — ${data.total_new} new listing${data.total_new !== 1 ? 's' : ''} found`);
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        showToast('Scan failed: ' + (data.error || 'unknown error'));
+        resetBtn();
+      }
+    } catch (e) {
+      showToast('Network error — check your connection');
+      resetBtn();
+    }
+
+    function resetBtn() {
+      btn.classList.remove('loading');
+      spinner.style.display = 'none';
+      label.textContent = '▶ Scan Now';
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 4000);
+  }
+
+  // Stagger card animations
+  document.querySelectorAll('.card').forEach((card, i) => {
+    card.style.animationDelay = (i * 0.04) + 's';
+  });
+
+  // ── Lightbox ──────────────────────────────────────────────────
+  let lbPhotos = [], lbIndex = 0;
+
+  function openLightbox(e, el) {
+    e.preventDefault();
+    e.stopPropagation();
+    lbPhotos = JSON.parse(el.dataset.photos);
+    lbIndex = 0;
+    document.getElementById('lbTitle').textContent = el.dataset.title;
+    buildDots();
+    lbRender();
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function lbClickOutside(e) {
+    if (e.target === document.getElementById('lightbox') ||
+        e.target.classList.contains('lb-img-wrap')) {
+      closeLightbox();
+    }
+  }
+
+  function lbStep(dir) {
+    lbIndex = Math.max(0, Math.min(lbPhotos.length - 1, lbIndex + dir));
+    lbRender();
+  }
+
+  function lbRender() {
+    document.getElementById('lbImg').src = lbPhotos[lbIndex];
+    document.getElementById('lbCounter').textContent =
+      lbPhotos.length > 1 ? `${lbIndex + 1} / ${lbPhotos.length}` : '';
+    document.getElementById('lbPrev').disabled = lbIndex === 0;
+    document.getElementById('lbNext').disabled = lbIndex === lbPhotos.length - 1;
+    document.querySelectorAll('.lb-dot').forEach((d, i) =>
+      d.classList.toggle('active', i === lbIndex));
+  }
+
+  function buildDots() {
+    const container = document.getElementById('lbDots');
+    container.innerHTML = '';
+    if (lbPhotos.length <= 1) return;
+    lbPhotos.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'lb-dot' + (i === 0 ? ' active' : '');
+      d.onclick = (e) => { e.stopPropagation(); lbIndex = i; lbRender(); };
+      container.appendChild(d);
+    });
+  }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('lightbox').classList.contains('open')) return;
+    if (e.key === 'ArrowRight') lbStep(1);
+    if (e.key === 'ArrowLeft')  lbStep(-1);
+    if (e.key === 'Escape')     closeLightbox();
+  });
+</script>
+
+</body>
+</html>
