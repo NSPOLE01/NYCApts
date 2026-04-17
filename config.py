@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Subreddits to scan
 SUBREDDITS = [
     s.strip()
     for s in os.getenv("SUBREDDITS", "LeaseTakeoverNYC,NYCapartments,NYCroommates").split(",")
