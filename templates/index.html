@@ -660,6 +660,35 @@
     }
     .toast.show { opacity: 1; transform: translateY(0); }
 
+    /* ── New-only toggle ─────────────────────────────────────────── */
+    .new-only-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.3rem 0.7rem;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--ink-2);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .new-only-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .new-only-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .unread-badge {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 10px;
+      padding: 0.05rem 0.4rem;
+      font-size: 0.62rem;
+      min-width: 1.2rem;
+      text-align: center;
+    }
+    .new-only-btn.active .unread-badge { background: rgba(255,255,255,0.3); }
+
     /* ── Tabs ───────────────────────────────────────────────────── */
     .tabs {
       max-width: 1440px;
@@ -799,6 +828,12 @@
 
     <button type="submit" class="filter-apply">Apply</button>
     <a href="/" class="filter-reset">Reset</a>
+
+    <div class="filter-sep"></div>
+
+    <button class="new-only-btn" id="newOnlyBtn" onclick="toggleNewOnly(event)" type="button">
+      New only <span class="unread-badge" id="unreadBadge">0</span>
+    </button>
 
     <span class="result-count"><strong>{{ listings | length }}</strong> shown</span>
   </form>
@@ -1021,12 +1056,40 @@
     setTimeout(() => t.classList.remove('show'), 4000);
   }
 
-  async function openListing(id, redditUrl) {
+  let unreadCount = 0;
+  let newOnlyActive = false;
+
+  function initUnreadCount() {
+    unreadCount = document.querySelectorAll('.card[data-new="true"]').length;
+    updateUnreadBadge();
+  }
+
+  function updateUnreadBadge() {
+    document.getElementById('unreadBadge').textContent = unreadCount;
+  }
+
+  function toggleNewOnly(e) {
+    e.preventDefault();
+    newOnlyActive = !newOnlyActive;
+    const btn = document.getElementById('newOnlyBtn');
+    btn.classList.toggle('active', newOnlyActive);
+    document.querySelectorAll('.card').forEach(card => {
+      if (newOnlyActive) {
+        card.style.display = card.dataset.new === 'true' ? '' : 'none';
+      } else {
+        card.style.display = '';
+      }
+    });
+  }
+
+  async function openListing(id) {
     const card = document.getElementById('card-' + id);
     if (card && card.dataset.new === 'true') {
       card.dataset.new = 'false';
       const dot = document.getElementById('dot-' + id);
       if (dot) dot.remove();
+      unreadCount = Math.max(0, unreadCount - 1);
+      updateUnreadBadge();
       fetch(`/api/listing/${id}/read`, { method: 'POST' });
     }
     window.location.href = '/listing/' + id;
@@ -1087,10 +1150,11 @@
     btn.classList.add('active');
   }
 
-  // Stagger card animations
+  // Stagger card animations & init unread count
   document.querySelectorAll('.card').forEach((card, i) => {
     card.style.animationDelay = (i * 0.04) + 's';
   });
+  initUnreadCount();
 
   // ── Lightbox ──────────────────────────────────────────────────
   let lbPhotos = [], lbIndex = 0;
