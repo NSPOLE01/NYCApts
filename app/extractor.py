@@ -23,6 +23,7 @@ Given the title and body of a Reddit post, extract the following fields as JSON.
 Return ONLY valid JSON — no markdown, no explanation.
 
 Fields to extract:
+- post_type (string): Either "listing" (someone offering/renting out an apartment or room) or "seeking" (someone looking for an apartment, room, or roommate). This is the most important field — read carefully.
 - price (integer): Monthly rent in USD. null if not found.
 - bedrooms (number): Number of bedrooms. Use 0 for studio. null if not found.
 - bathrooms (number): Number of bathrooms (can be 0.5 increments). null if not found.
@@ -32,7 +33,7 @@ Fields to extract:
 - lease_start (string): Lease start date as mentioned (e.g. "June 1", "2024-06-01", "ASAP"). null if not found.
 - lease_end (string): Lease end date as mentioned. null if not found.
 - lease_duration_months (integer): Lease duration in months (e.g. 12 for a 1-year lease). null if not found.
-- notes (string): Any important caveats or additional info (broker fee, no-fee, flex rooms, guarantors, etc.). null if none.
+- notes (string): Any important caveats or additional info (broker fee, no-fee, flex rooms, guarantors, budget, etc.). null if none.
 
 Post title: {title}
 
@@ -63,7 +64,10 @@ def extract_listing_data(title: str, body: str) -> dict:
         raw = re.sub(r"\s*```$", "", raw)
 
         data = json.loads(raw)
+        raw_type = _clean_str(data.get("post_type")) or "listing"
+        post_type = "seeking" if "seek" in raw_type.lower() else "listing"
         return {
+            "post_type": post_type,
             "price": _to_int(data.get("price")),
             "bedrooms": _to_float(data.get("bedrooms")),
             "bathrooms": _to_float(data.get("bathrooms")),
@@ -79,6 +83,7 @@ def extract_listing_data(title: str, body: str) -> dict:
     except (json.JSONDecodeError, anthropic.APIError, Exception) as e:
         # Return empty extraction with error note rather than crashing
         return {
+            "post_type": "listing",
             "price": None,
             "bedrooms": None,
             "bathrooms": None,

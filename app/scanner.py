@@ -53,6 +53,7 @@ def scan_subreddit(subreddit_name: str, max_age_hours: int | None = None) -> dic
                 post_body=post["post_body"],
                 created_utc=datetime.fromtimestamp(post["created_utc"], tz=timezone.utc).replace(tzinfo=None),
                 photos=json.dumps(post["photos"]),
+                post_type=extracted["post_type"],
                 price=extracted["price"],
                 bedrooms=extracted["bedrooms"],
                 bathrooms=extracted["bathrooms"],

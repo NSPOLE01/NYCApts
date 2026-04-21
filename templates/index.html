@@ -571,6 +571,44 @@
     }
     .toast.show { opacity: 1; transform: translateY(0); }
 
+    /* ── Tabs ───────────────────────────────────────────────────── */
+    .tabs {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 1.2rem 2rem 0;
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      padding: 0.6rem 1.2rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tab-btn:hover { color: var(--ink); }
+    .tab-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
+    .tab-count {
+      background: var(--paper-2);
+      border-radius: 10px;
+      padding: 0.05rem 0.45rem;
+      font-size: 0.65rem;
+    }
+    .tab-btn.active .tab-count { background: var(--accent); color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
     /* ── Responsive ─────────────────────────────────────────────── */
     @media (max-width: 768px) {
       .masthead, .filter-bar { padding: 0 1rem; }
@@ -675,112 +713,141 @@
   </form>
 </nav>
 
-<!-- ── Grid ───────────────────────────────────────────────────── -->
-<main class="main">
-  <div class="grid">
+{% macro render_card(listing) %}
+{% set photos = listing.photos | fromjson if listing.photos else [] %}
+{% set amenities = listing.amenities | fromjson if listing.amenities else [] %}
+<div class="card" onclick="window.location.href='/listing/{{ listing.id }}'">
 
-    {% if listings %}
-      {% for listing in listings %}
-      {% set photos = listing.photos | fromjson if listing.photos else [] %}
-      {% set amenities = listing.amenities | fromjson if listing.amenities else [] %}
+  {% if photos and photos | length > 0 %}
+    <div class="card-photo-wrap" onclick="openLightbox(event, this)"
+         data-photos="{{ photos | tojson | e }}"
+         data-title="{{ listing.title | e }}">
+      <img class="card-photo" src="{{ photos[0] }}" alt="Listing photo" loading="lazy"
+           onerror="this.closest('.card-photo-wrap').style.display='none'">
+      {% if photos | length > 1 %}
+        <span class="photo-count">&#128247; {{ photos | length }}</span>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="card-photo-placeholder"></div>
+  {% endif %}
 
-      <div class="card" onclick="window.location.href='/listing/{{ listing.id }}'" style="animation-delay: {{ loop.index0 * 0.04 }}s">
+  <div class="card-body">
+    <div class="card-top">
+      <div class="card-title">{{ listing.title }}</div>
+      <span class="badge badge-sub">r/{{ listing.subreddit }}</span>
+    </div>
 
-        {% if photos and photos | length > 0 %}
-          <div class="card-photo-wrap" onclick="openLightbox(event, this)"
-               data-photos="{{ photos | tojson | e }}"
-               data-title="{{ listing.title | e }}">
-            <img class="card-photo" src="{{ photos[0] }}" alt="Listing photo" loading="lazy"
-                 onerror="this.closest('.card-photo-wrap').style.display='none'">
-            {% if photos | length > 1 %}
-              <span class="photo-count">&#128247; {{ photos | length }}</span>
-            {% endif %}
-          </div>
-        {% else %}
-          <div class="card-photo-placeholder"></div>
-        {% endif %}
-
-        <div class="card-body">
-          <div class="card-top">
-            <div class="card-title">{{ listing.title }}</div>
-            <span class="badge badge-sub">r/{{ listing.subreddit }}</span>
-          </div>
-
-          {% if listing.neighborhood or listing.borough %}
-          <div class="card-location">
-            {% if listing.neighborhood %}<strong>{{ listing.neighborhood }}</strong>{% endif %}
-            {% if listing.neighborhood and listing.borough %} · {% endif %}
-            {% if listing.borough %}{{ listing.borough }}{% endif %}
-          </div>
-          {% endif %}
-
-          {% if listing.price %}
-            <div class="card-price">
-              ${{ "{:,}".format(listing.price) }}<span class="price-unit">/mo</span>
-            </div>
-          {% else %}
-            <div class="card-price-unknown">Price not listed</div>
-          {% endif %}
-
-          <div class="card-specs">
-            {% if listing.bedrooms is not none %}
-            <div class="spec">
-              <span class="spec-val">{{ "Studio" if listing.bedrooms == 0 else (listing.bedrooms | int if listing.bedrooms == listing.bedrooms | int else listing.bedrooms) }}</span>
-              <span class="spec-key">{{ "Type" if listing.bedrooms == 0 else "Beds" }}</span>
-            </div>
-            {% endif %}
-            {% if listing.bathrooms is not none %}
-            <div class="spec">
-              <span class="spec-val">{{ listing.bathrooms | int if listing.bathrooms == listing.bathrooms | int else listing.bathrooms }}</span>
-              <span class="spec-key">Baths</span>
-            </div>
-            {% endif %}
-            {% if listing.lease_duration_months %}
-            <div class="spec">
-              <span class="spec-val">{{ listing.lease_duration_months }}mo</span>
-              <span class="spec-key">Lease</span>
-            </div>
-            {% endif %}
-          </div>
-
-          {% if amenities %}
-          <div class="card-amenities">
-            {% for a in amenities[:4] %}
-              <span class="pill">{{ a }}</span>
-            {% endfor %}
-            {% if amenities | length > 4 %}
-              <span class="pill pill-more">+{{ amenities | length - 4 }}</span>
-            {% endif %}
-          </div>
-          {% endif %}
-
-          <div class="card-meta">
-            {% if listing.lease_start %}
-              <span>Available <strong>{{ listing.lease_start }}</strong></span>
-            {% else %}
-              <span></span>
-            {% endif %}
-            <a class="card-reddit-link" href="{{ listing.url }}" target="_blank" rel="noopener"
-               onclick="event.stopPropagation()">View on Reddit ↗</a>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-
-    {% else %}
-      <div class="empty">
-        <div class="empty-icon">🏙</div>
-        <h2>No listings found</h2>
-        <p>
-          {% if filters.borough or filters.min_price or filters.max_price or filters.subreddit %}
-            Try adjusting your filters, or&nbsp;<a href="/" style="color:var(--blue)">reset them</a>.
-          {% else %}
-            Click <strong>Scan Now</strong> to pull the latest posts from Reddit.
-          {% endif %}
-        </p>
-      </div>
+    {% if listing.neighborhood or listing.borough %}
+    <div class="card-location">
+      {% if listing.neighborhood %}<strong>{{ listing.neighborhood }}</strong>{% endif %}
+      {% if listing.neighborhood and listing.borough %} · {% endif %}
+      {% if listing.borough %}{{ listing.borough }}{% endif %}
+    </div>
     {% endif %}
 
+    {% if listing.price %}
+      <div class="card-price">
+        ${{ "{:,}".format(listing.price) }}<span class="price-unit">/mo</span>
+      </div>
+    {% else %}
+      <div class="card-price-unknown">Price not listed</div>
+    {% endif %}
+
+    <div class="card-specs">
+      {% if listing.bedrooms is not none %}
+      <div class="spec">
+        <span class="spec-val">{{ "Studio" if listing.bedrooms == 0 else (listing.bedrooms | int if listing.bedrooms == listing.bedrooms | int else listing.bedrooms) }}</span>
+        <span class="spec-key">{{ "Type" if listing.bedrooms == 0 else "Beds" }}</span>
+      </div>
+      {% endif %}
+      {% if listing.bathrooms is not none %}
+      <div class="spec">
+        <span class="spec-val">{{ listing.bathrooms | int if listing.bathrooms == listing.bathrooms | int else listing.bathrooms }}</span>
+        <span class="spec-key">Baths</span>
+      </div>
+      {% endif %}
+      {% if listing.lease_duration_months %}
+      <div class="spec">
+        <span class="spec-val">{{ listing.lease_duration_months }}mo</span>
+        <span class="spec-key">Lease</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if amenities %}
+    <div class="card-amenities">
+      {% for a in amenities[:4] %}
+        <span class="pill">{{ a }}</span>
+      {% endfor %}
+      {% if amenities | length > 4 %}
+        <span class="pill pill-more">+{{ amenities | length - 4 }}</span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card-meta">
+      {% if listing.lease_start %}
+        <span>Available <strong>{{ listing.lease_start }}</strong></span>
+      {% else %}
+        <span></span>
+      {% endif %}
+      <a class="card-reddit-link" href="{{ listing.url }}" target="_blank" rel="noopener"
+         onclick="event.stopPropagation()">View on Reddit ↗</a>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+<!-- ── Tabs ────────────────────────────────────────────────────── -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('listings', this)">
+    Available Listings <span class="tab-count">{{ listings | length }}</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('seekers', this)">
+    Roommate Hunting <span class="tab-count">{{ seekers | length }}</span>
+  </button>
+</div>
+
+<!-- ── Listings tab ────────────────────────────────────────────── -->
+<main class="main">
+  <div class="tab-panel active" id="tab-listings">
+    <div class="grid">
+      {% if listings %}
+        {% for listing in listings %}
+          {{ render_card(listing) }}
+        {% endfor %}
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">🏙</div>
+          <h2>No listings found</h2>
+          <p>
+            {% if filters.borough or filters.min_price or filters.max_price or filters.subreddit %}
+              Try adjusting your filters, or&nbsp;<a href="/" style="color:var(--blue)">reset them</a>.
+            {% else %}
+              Click <strong>Scan Now</strong> to pull the latest posts from Reddit.
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Roommate Hunting tab ──────────────────────────────────── -->
+  <div class="tab-panel" id="tab-seekers">
+    <div class="grid">
+      {% if seekers %}
+        {% for listing in seekers %}
+          {{ render_card(listing) }}
+        {% endfor %}
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">🔍</div>
+          <h2>No roommate hunters found</h2>
+          <p>Posts from people looking for apartments or roommates will appear here.</p>
+        </div>
+      {% endif %}
+    </div>
   </div>
 </main>
 
@@ -851,6 +918,13 @@
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 4000);
+  }
+
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
   }
 
   // Stagger card animations

@@ -19,29 +19,34 @@ def index():
     subreddit = request.args.get("subreddit", "")
     sort = request.args.get("sort", "newest")
 
-    query = Listing.query
+    def apply_filters(query):
+        if borough:
+            query = query.filter(Listing.borough == borough)
+        if min_price is not None:
+            query = query.filter(Listing.price >= min_price)
+        if max_price is not None:
+            query = query.filter(Listing.price <= max_price)
+        if min_beds is not None:
+            query = query.filter(Listing.bedrooms >= min_beds)
+        if max_beds is not None:
+            query = query.filter(Listing.bedrooms <= max_beds)
+        if subreddit:
+            query = query.filter(Listing.subreddit == subreddit)
+        if sort == "price_asc":
+            query = query.order_by(Listing.price.asc().nulls_last())
+        elif sort == "price_desc":
+            query = query.order_by(Listing.price.desc().nulls_last())
+        else:
+            query = query.order_by(Listing.scraped_at.desc())
+        return query
 
-    if borough:
-        query = query.filter(Listing.borough == borough)
-    if min_price is not None:
-        query = query.filter(Listing.price >= min_price)
-    if max_price is not None:
-        query = query.filter(Listing.price <= max_price)
-    if min_beds is not None:
-        query = query.filter(Listing.bedrooms >= min_beds)
-    if max_beds is not None:
-        query = query.filter(Listing.bedrooms <= max_beds)
-    if subreddit:
-        query = query.filter(Listing.subreddit == subreddit)
+    listings = apply_filters(
+        Listing.query.filter(Listing.post_type == "listing")
+    ).limit(200).all()
 
-    if sort == "price_asc":
-        query = query.order_by(Listing.price.asc().nulls_last())
-    elif sort == "price_desc":
-        query = query.order_by(Listing.price.desc().nulls_last())
-    else:
-        query = query.order_by(Listing.scraped_at.desc())
-
-    listings = query.limit(200).all()
+    seekers = apply_filters(
+        Listing.query.filter(Listing.post_type == "seeking")
+    ).limit(200).all()
 
     # Stats
     total = Listing.query.count()
@@ -50,6 +55,7 @@ def index():
     return render_template(
         "index.html",
         listings=listings,
+        seekers=seekers,
         total=total,
         last_scan=last_scan,
         subreddits=config.SUBREDDITS,

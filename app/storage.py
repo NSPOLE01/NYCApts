@@ -18,6 +18,7 @@ class Listing(db.Model):
     scraped_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Extracted fields
+    post_type = db.Column(db.String(10), default="listing")  # "listing" or "seeking"
     price = db.Column(db.Integer)              # monthly rent in USD
     bedrooms = db.Column(db.Float)             # 0 = studio
     bathrooms = db.Column(db.Float)
@@ -41,6 +42,7 @@ class Listing(db.Model):
             "author": self.author,
             "created_utc": self.created_utc.isoformat() if self.created_utc else None,
             "scraped_at": self.scraped_at.isoformat() if self.scraped_at else None,
+            "post_type": self.post_type or "listing",
             "price": self.price,
             "bedrooms": self.bedrooms,
             "bathrooms": self.bathrooms,
