@@ -19,6 +19,7 @@ class Listing(db.Model):
 
     # Extracted fields
     post_type = db.Column(db.String(10), default="listing")  # "listing" or "seeking"
+    is_new = db.Column(db.Boolean, default=True, nullable=False)
     price = db.Column(db.Integer)              # monthly rent in USD
     bedrooms = db.Column(db.Float)             # 0 = studio
     bathrooms = db.Column(db.Float)

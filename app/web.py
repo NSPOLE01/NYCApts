@@ -94,6 +94,14 @@ def trigger_scan():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@bp.route("/api/listing/<int:listing_id>/read", methods=["POST"])
+def mark_read(listing_id):
+    listing = Listing.query.get_or_404(listing_id)
+    listing.is_new = False
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @bp.route("/api/listing/<int:listing_id>", methods=["DELETE"])
 def delete_listing(listing_id):
     listing = Listing.query.get_or_404(listing_id)
