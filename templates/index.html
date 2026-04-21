@@ -397,6 +397,31 @@
     }
     .card-reddit-link:hover { opacity: 1; text-decoration: underline; }
 
+    .card-delete {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(0,0,0,0.45);
+      border: none;
+      color: #fff;
+      width: 1.8rem;
+      height: 1.8rem;
+      border-radius: 50%;
+      font-size: 0.9rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s, background 0.15s;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+    .card:hover .card-delete { opacity: 1; }
+    .card-delete:hover { background: var(--accent); }
+    .card { position: relative; }
+
     /* ── Card photo wrap ────────────────────────────────────────── */
     .card-photo-wrap {
       position: relative;
@@ -718,7 +743,9 @@
 {% macro render_card(listing) %}
 {% set photos = listing.photos | fromjson if listing.photos else [] %}
 {% set amenities = listing.amenities | fromjson if listing.amenities else [] %}
-<div class="card" onclick="window.location.href='/listing/{{ listing.id }}'">
+<div class="card" onclick="window.location.href='/listing/{{ listing.id }}'" id="card-{{ listing.id }}">
+  <button class="card-delete" title="Delete listing"
+          onclick="deleteListing(event, {{ listing.id }})">&#215;</button>
 
   {% if photos and photos | length > 0 %}
     <div class="card-photo-wrap" onclick="openLightbox(event, this)"
@@ -920,6 +947,29 @@
     t.textContent = msg;
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 4000);
+  }
+
+  async function deleteListing(e, id) {
+    e.stopPropagation();
+    const card = document.getElementById('card-' + id);
+    card.style.transition = 'opacity 0.2s, transform 0.2s';
+    card.style.opacity = '0';
+    card.style.transform = 'scale(0.95)';
+    try {
+      const res = await fetch(`/api/listing/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) {
+        setTimeout(() => card.remove(), 200);
+      } else {
+        card.style.opacity = '1';
+        card.style.transform = '';
+        showToast('Failed to delete listing');
+      }
+    } catch {
+      card.style.opacity = '1';
+      card.style.transform = '';
+      showToast('Network error');
+    }
   }
 
   function switchTab(name, btn) {
