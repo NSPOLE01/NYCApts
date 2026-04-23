@@ -12,7 +12,6 @@ SUBREDDITS = [
 # Scanning
 SCAN_INTERVAL_HOURS = int(os.getenv("SCAN_INTERVAL_HOURS", "4"))
 
-# Anthropic
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
