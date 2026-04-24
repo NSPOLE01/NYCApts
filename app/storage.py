@@ -20,6 +20,7 @@ class Listing(db.Model):
     # Extracted fields
     post_type = db.Column(db.String(10), default="listing")  # "listing" or "seeking"
     is_new = db.Column(db.Boolean, default=True, nullable=False)
+    gender_preference = db.Column(db.String(20))  # "any", "female", "male", "non-binary"
     price = db.Column(db.Integer)              # monthly rent in USD
     bedrooms = db.Column(db.Float)             # 0 = studio
     bathrooms = db.Column(db.Float)
@@ -44,6 +45,7 @@ class Listing(db.Model):
             "created_utc": self.created_utc.isoformat() if self.created_utc else None,
             "scraped_at": self.scraped_at.isoformat() if self.scraped_at else None,
             "post_type": self.post_type or "listing",
+            "gender_preference": self.gender_preference or "any",
             "price": self.price,
             "bedrooms": self.bedrooms,
             "bathrooms": self.bathrooms,

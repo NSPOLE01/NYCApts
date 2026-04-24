@@ -17,6 +17,7 @@ def index():
     min_beds = request.args.get("min_beds", type=float)
     max_beds = request.args.get("max_beds", type=float)
     subreddit = request.args.get("subreddit", "")
+    gender = request.args.get("gender", "")
     sort = request.args.get("sort", "newest")
 
     def apply_filters(query):
@@ -32,6 +33,8 @@ def index():
             query = query.filter(Listing.bedrooms <= max_beds)
         if subreddit:
             query = query.filter(Listing.subreddit == subreddit)
+        if gender:
+            query = query.filter(Listing.gender_preference == gender)
         if sort == "price_asc":
             query = query.order_by(Listing.price.asc().nulls_last())
         elif sort == "price_desc":
@@ -67,6 +70,7 @@ def index():
             "min_beds": min_beds,
             "max_beds": max_beds,
             "subreddit": subreddit,
+            "gender": gender,
             "sort": sort,
         },
     )

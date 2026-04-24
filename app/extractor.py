@@ -33,6 +33,7 @@ Fields to extract:
 - lease_start (string): Lease start date as mentioned (e.g. "June 1", "2024-06-01", "ASAP"). null if not found.
 - lease_end (string): Lease end date as mentioned. null if not found.
 - lease_duration_months (integer): Lease duration in months (e.g. 12 for a 1-year lease). null if not found.
+- gender_preference (string): Gender preference for the roommate or tenant. Use exactly one of: "female", "male", "non-binary", "any". Default to "any" if not mentioned.
 - notes (string): Any important caveats or additional info (broker fee, no-fee, flex rooms, guarantors, budget, etc.). null if none.
 
 Post title: {title}
@@ -66,8 +67,18 @@ def extract_listing_data(title: str, body: str) -> dict:
         data = json.loads(raw)
         raw_type = _clean_str(data.get("post_type")) or "listing"
         post_type = "seeking" if "seek" in raw_type.lower() else "listing"
+        raw_gender = (_clean_str(data.get("gender_preference")) or "any").lower()
+        if "female" in raw_gender or "woman" in raw_gender or "women" in raw_gender:
+            gender_preference = "female"
+        elif "male" in raw_gender or "man" in raw_gender or "men" in raw_gender:
+            gender_preference = "male"
+        elif "non" in raw_gender or "enby" in raw_gender:
+            gender_preference = "non-binary"
+        else:
+            gender_preference = "any"
         return {
             "post_type": post_type,
+            "gender_preference": gender_preference,
             "price": _to_int(data.get("price")),
             "bedrooms": _to_float(data.get("bedrooms")),
             "bathrooms": _to_float(data.get("bathrooms")),
@@ -84,6 +95,7 @@ def extract_listing_data(title: str, body: str) -> dict:
         # Return empty extraction with error note rather than crashing
         return {
             "post_type": "listing",
+            "gender_preference": "any",
             "price": None,
             "bedrooms": None,
             "bathrooms": None,

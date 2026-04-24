@@ -826,6 +826,18 @@
       </select>
     </div>
 
+    <div class="filter-sep"></div>
+
+    <div class="filter-group">
+      <select name="gender">
+        <option value="">Any Gender</option>
+        <option value="female" {% if filters.gender == 'female' %}selected{% endif %}>Female</option>
+        <option value="male" {% if filters.gender == 'male' %}selected{% endif %}>Male</option>
+        <option value="non-binary" {% if filters.gender == 'non-binary' %}selected{% endif %}>Non-binary</option>
+        <option value="any" {% if filters.gender == 'any' %}selected{% endif %}>No preference</option>
+      </select>
+    </div>
+
     <button type="submit" class="filter-apply">Apply</button>
     <a href="/" class="filter-reset">Reset</a>
 
