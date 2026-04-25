@@ -9,7 +9,6 @@ SUBREDDITS = [
     if s.strip()
 ]
 
-# Scanning
 SCAN_INTERVAL_HOURS = int(os.getenv("SCAN_INTERVAL_HOURS", "4"))
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
