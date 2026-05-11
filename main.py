@@ -28,6 +28,6 @@ if __name__ == "__main__":
             total = sum(r["new_listings"] for r in results)
             print(f"\nDone. {total} new listings saved.\n")
     else:
-        print("\nNYC Apt Scanner running at http://localhost:5000")
+        print("\nNYC Apt Scanner running at http://localhost:5001")
         print("Use the 'Scan Now' button in the UI to fetch new listings.\n")
-        app.run(debug=False, port=5000, use_reloader=False)
+        app.run(debug=False, port=5001, use_reloader=False)
